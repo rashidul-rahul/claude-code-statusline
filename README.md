@@ -55,7 +55,20 @@ old Claude Code versions that hit fallback 3):
 - `jq`
 - Claude Code
 
-On macOS: `brew install jq`.
+Install `jq`: macOS `brew install jq` · Debian/Ubuntu `sudo apt install jq` · Fedora `sudo dnf install jq` · Windows `winget install jqlang.jq`.
+
+## Platform support
+
+| Platform | Status |
+|---|---|
+| macOS | ✅ tested (works on the stock bash 3.2) |
+| Linux | ✅ the `date -r` (BSD) → `date -d @epoch` (GNU) fallback chain covers GNU coreutils |
+| Windows (WSL) | ✅ same as Linux |
+| Windows (native) | ✅ runs via Git Bash, which Claude Code already requires on Windows — but Git Bash doesn't bundle `jq`, so install it and make sure it's on PATH |
+
+The script pins `LC_ALL=C`, so number formatting stays correct on comma-decimal
+locales (de, fr, …). Glyphs (`⎇ ◈ ↻` and the block bar) need a font that carries
+them — any Nerd Font, Menlo, or Cascadia Code is fine.
 
 ## Install
 

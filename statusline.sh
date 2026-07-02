@@ -5,6 +5,10 @@
 # Reads session JSON from stdin (model, effort, context_window, rate_limits...).
 set -uo pipefail
 
+# Deterministic number formatting on non-English locales (printf %.2f, awk),
+# byte-safe text handling. Keep terminals' UTF-8 rendering unaffected.
+export LC_ALL=C
+
 input=$(cat)
 
 # --- one jq pass for every field ------------------------------------------
