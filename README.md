@@ -3,14 +3,21 @@
 A small status line for [Claude Code](https://claude.com/claude-code) that shows:
 
 ```
-Opus 4.7 · ◈ high · ⎇ main · ████░░░░░░ 42% 84k/200k · $1.24
+Opus 4.7 · ◈ high · ⎇ main* ↑2 · ████▋░░░░░ 47% 94k/200k · 5h 37% · $1.24
 ```
 
 - model name
-- effort level (`/effort`), color-coded: `low` dim · `medium` green · `high` yellow · `xhigh`/`max` red
-- current git branch
-- context window usage as a 10-block bar + percentage + `used/total` tokens (green / yellow / red)
-- session cost in USD
+- effort level (`/effort`), color-coded: `low` gray · `medium` green · `high` amber · `xhigh`/`max` red
+- current git branch, with a `*` when the tree is dirty (staged, unstaged, or untracked) and `↑n↓n` ahead/behind the upstream
+- context window usage as a smooth 10-cell bar (⅛-block resolution) + percentage + `used/total` tokens (green / amber ≥60% / red ≥80%)
+- rate limit: 5-hour window usage %, plus the reset time (`↻17:10`) once it passes 60% and the 7-day window once it passes 50%
+- session cost in USD (gray, amber ≥ $5, red ≥ $20)
+
+Everything renders in a soft 256-color palette. Segments whose data isn't in the
+payload (effort, rate limits, tokens on older Claude Code versions; branch outside
+a git repo) are omitted rather than shown empty. All fields are parsed in a single
+`jq` pass and the git checks use cheap plumbing commands — a full render is ~40ms,
+well inside the ~300ms statusline refresh cadence.
 
 ## Context % that actually matches `/context`
 
