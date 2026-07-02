@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Claude Code status line:
-#   model · effort · git branch[*][↑↓] · context bar + tokens · lines ±
+#   model · effort · folder ⎇ branch[*][↑↓] · context bar + tokens · lines ±
 #   · rate limit · duration · cost
 # Reads session JSON from stdin (model, effort, context_window, rate_limits...).
 set -uo pipefail
@@ -50,9 +50,12 @@ cost=${cost:-0}; effort=${effort:-}; ctx_used=${ctx_used:-}; ctx_size=${ctx_size
 used_pct=${used_pct:-}; rl5_pct=${rl5_pct:-}; rl5_reset=${rl5_reset:-}; rl7_pct=${rl7_pct:-}
 lines_add=${lines_add:-0}; lines_del=${lines_del:-0}; dur_ms=${dur_ms:-0}
 
-# --- git: branch, dirty marker, ahead/behind upstream -----------------------
-branch=""; dirty=""; arrows=""
-if [ -d "$cwd" ] && git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
+# --- git: repo folder, branch, dirty marker, ahead/behind upstream ----------
+branch=""; dirty=""; arrows=""; repo_top=""
+if [ -d "$cwd" ]; then
+  repo_top=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)
+fi
+if [ -n "$repo_top" ]; then
   branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null \
         || git -C "$cwd" rev-parse --short HEAD 2>/dev/null \
         || true)
@@ -70,6 +73,10 @@ if [ -d "$cwd" ] && git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
     fi
   fi
 fi
+
+# Project folder: repo root name inside git, current dir name otherwise —
+# always shown so it's obvious WHICH directory the branch belongs to.
+dir_label=$(basename "${repo_top:-$cwd}")
 
 read_ctx_tokens() {
   local file="$1"
@@ -144,7 +151,7 @@ cost_fmt=$(printf '%.2f' "$cost" 2>/dev/null || echo "0.00")
 # --- 256-color palette -------------------------------------------------------
 ESC=$'\033'
 RESET="${ESC}[0m"
-GRAY="${ESC}[38;5;245m";  DGRAY="${ESC}[38;5;240m"
+GRAY="${ESC}[38;5;245m";  DGRAY="${ESC}[38;5;240m"; WHITE="${ESC}[38;5;252m"
 BLUE="${ESC}[38;5;81m";   MAGENTA="${ESC}[38;5;176m"
 GREEN="${ESC}[38;5;114m"; AMBER="${ESC}[38;5;214m"; RED="${ESC}[38;5;203m"
 
@@ -205,8 +212,9 @@ fi
 sep="${DGRAY}·${RESET}"
 out="${BLUE}${model}${RESET}"
 [ -n "$effort" ] && out+=" ${sep} ${effort_color}◈ ${effort}${RESET}"
+[ -n "$dir_label" ] && [ "$dir_label" != "." ] && out+=" ${sep} ${WHITE}${dir_label}${RESET}"
 if [ -n "$branch" ]; then
-  out+=" ${sep} ${MAGENTA}⎇ ${branch}${RESET}"
+  out+=" ${MAGENTA}⎇ ${branch}${RESET}"
   [ -n "$dirty" ]  && out+="${AMBER}${dirty}${RESET}"
   [ -n "$arrows" ] && out+=" ${GRAY}${arrows}${RESET}"
 fi

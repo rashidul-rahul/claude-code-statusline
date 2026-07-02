@@ -5,11 +5,12 @@ A small status line for [Claude Code](https://claude.com/claude-code):
 <img src="assets/statusline.png" alt="statusline in calm, busy, and hot states" width="1176">
 
 ```
-Opus 4.7 · ◈ high · ⎇ main* ↑2 · ████▋░░░░░ 47% 94k/200k · +892 -305 · 5h 72% ↻17:10 · 3h5m · $12.40
+Opus 4.7 · ◈ high · api-server ⎇ main* ↑2 · ████▋░░░░░ 47% 94k/200k · +892 -305 · 5h 72% ↻17:10 · 3h5m · $12.40
 ```
 
 - model name
 - effort level (`/effort`), color-coded: `low` gray · `medium` green · `high` amber · `xhigh`/`max` red
+- project folder — the git repo root's name (current dir name outside a repo), so it's always unambiguous *which* checkout the branch belongs to
 - current git branch, with a `*` when the tree is dirty (staged, unstaged, or untracked) and `↑n↓n` ahead/behind the upstream
 - context window usage as a smooth 10-cell bar (⅛-block resolution) + percentage + `used/total` tokens (green / amber ≥60% / red ≥80%)
 - lines added/removed by the session (`+892 -305`), shown once either is non-zero
