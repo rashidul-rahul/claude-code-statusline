@@ -25,6 +25,7 @@ input=$(cat)
   IFS= read -r lines_del
   IFS= read -r dur_ms
 } < <(printf '%s' "$input" | jq -r '
+  def i: if type == "number" then round else . end;
   (.model.display_name // .model.id // "?"),
   (.model.id // ""),
   (.workspace.current_dir // .cwd // "."),
@@ -34,12 +35,12 @@ input=$(cat)
   (.context_window.current_usage as $u
    | if $u then (($u.input_tokens // 0) + ($u.output_tokens // 0)
        + ($u.cache_creation_input_tokens // 0) + ($u.cache_read_input_tokens // 0))
-     else "" end),
-  (.context_window.context_window_size // ""),
-  (.context_window.used_percentage // ""),
-  (.rate_limits.five_hour.used_percentage // ""),
-  (.rate_limits.five_hour.resets_at // ""),
-  (.rate_limits.seven_day.used_percentage // ""),
+     else "" end | i),
+  (.context_window.context_window_size // "" | i),
+  (.context_window.used_percentage // "" | i),
+  (.rate_limits.five_hour.used_percentage // "" | i),
+  (.rate_limits.five_hour.resets_at // "" | i),
+  (.rate_limits.seven_day.used_percentage // "" | i),
   (.cost.total_lines_added // 0 | floor),
   (.cost.total_lines_removed // 0 | floor),
   (.cost.total_duration_ms // 0 | floor)
