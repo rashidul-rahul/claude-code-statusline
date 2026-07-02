@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Claude Code status line: model · git branch · context% [bar] · session cost
+# Claude Code status line: model · effort · git branch · context% [bar] · session cost
 # Reads session JSON from stdin (model, workspace, transcript_path, cost...).
 set -uo pipefail
 
@@ -7,6 +7,7 @@ input=$(cat)
 
 model=$(printf '%s' "$input" | jq -r '.model.display_name // .model.id // "?"')
 model_id=$(printf '%s' "$input" | jq -r '.model.id // ""')
+effort=$(printf '%s' "$input" | jq -r '.effort.level // ""')
 cwd=$(printf '%s' "$input"   | jq -r '.workspace.current_dir // .cwd // "."')
 transcript=$(printf '%s' "$input" | jq -r '.transcript_path // ""')
 cost=$(printf '%s' "$input"  | jq -r '.cost.total_cost_usd // 0')
@@ -39,19 +40,45 @@ read_ctx_tokens() {
         END { print ((val+0) > 0 ? val+0 : pre+0) }'
 }
 
-ctx_tokens=$(read_ctx_tokens "$transcript")
-case "$ctx_tokens" in ""|"null") ctx_tokens=0 ;; esac
+fmt_tokens() {
+  awk -v n="$1" 'BEGIN {
+    if (n >= 1000000)   { v = n/1000000; printf (v == int(v) ? "%dM" : "%.1fM"), v }
+    else if (n >= 1000) printf "%dk", n/1000
+    else                printf "%d", n
+  }'
+}
 
-# Context window: 1M for [1m] variants, 200k otherwise
-limit=200000
-case "$model_id" in
-  *"[1m]"*|*"-1m"*) limit=1000000 ;;
-esac
+# Prefer native context_window data (exact API token counts); fall back to
+# used_percentage, then to transcript parsing on old Claude Code versions.
+ctx_used=$(printf '%s' "$input" | jq -r '
+  .context_window.current_usage as $u
+  | if $u then (($u.input_tokens // 0) + ($u.output_tokens // 0)
+      + ($u.cache_creation_input_tokens // 0) + ($u.cache_read_input_tokens // 0))
+    else empty end' 2>/dev/null)
+ctx_size=$(printf '%s' "$input" | jq -r '.context_window.context_window_size // empty' 2>/dev/null)
 
-if [ "${ctx_tokens:-0}" -gt 0 ] 2>/dev/null; then
-  pct=$(( ctx_tokens * 100 / limit ))
+tok_label=""
+if [ "${ctx_used:-x}" -ge 0 ] 2>/dev/null && [ "${ctx_size:-0}" -gt 0 ] 2>/dev/null; then
+  pct=$(( ctx_used * 100 / ctx_size ))
+  tok_label="$(fmt_tokens "$ctx_used")/$(fmt_tokens "$ctx_size")"
 else
-  pct=0
+  pct=$(printf '%s' "$input" | jq -r '.context_window.used_percentage // ""')
+  if ! [ "$pct" -ge 0 ] 2>/dev/null; then
+    ctx_tokens=$(read_ctx_tokens "$transcript")
+    case "$ctx_tokens" in ""|"null") ctx_tokens=0 ;; esac
+
+    # Context window: 1M for [1m] variants, 200k otherwise
+    limit=200000
+    case "$model_id" in
+      *"[1m]"*|*"-1m"*) limit=1000000 ;;
+    esac
+
+    if [ "${ctx_tokens:-0}" -gt 0 ] 2>/dev/null; then
+      pct=$(( ctx_tokens * 100 / limit ))
+    else
+      pct=0
+    fi
+  fi
 fi
 [ "$pct" -gt 100 ] && pct=100
 
@@ -72,10 +99,19 @@ elif [ "$pct" -ge 60 ]; then bar_color="$YELLOW"
 else                          bar_color="$GREEN"
 fi
 
+case "$effort" in
+  max|xhigh) effort_color="$RED" ;;
+  high)      effort_color="$YELLOW" ;;
+  medium)    effort_color="$GREEN" ;;
+  *)         effort_color="$DIM" ;;
+esac
+
 sep="${DIM}·${RESET}"
 out="${CYAN}${model}${RESET}"
+[ -n "$effort" ] && out="${out} ${sep} ${effort_color}◈ ${effort}${RESET}"
 [ -n "$branch" ] && out="${out} ${sep} ${MAG}⎇ ${branch}${RESET}"
 out="${out} ${sep} ${bar_color}${bar}${RESET} ${pct}%"
+[ -n "$tok_label" ] && out="${out} ${DIM}${tok_label}${RESET}"
 out="${out} ${sep} ${DIM}\$${cost_fmt}${RESET}"
 
 printf '%s\n' "$out"
