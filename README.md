@@ -1,16 +1,20 @@
 # claude-code-statusline
 
-A small status line for [Claude Code](https://claude.com/claude-code) that shows:
+A small status line for [Claude Code](https://claude.com/claude-code):
+
+<img src="assets/statusline.png" alt="statusline in calm, busy, and hot states" width="1176">
 
 ```
-Opus 4.7 · ◈ high · ⎇ main* ↑2 · ████▋░░░░░ 47% 94k/200k · 5h 37% · $1.24
+Opus 4.7 · ◈ high · ⎇ main* ↑2 · ████▋░░░░░ 47% 94k/200k · +892 -305 · 5h 72% ↻17:10 · 3h5m · $12.40
 ```
 
 - model name
 - effort level (`/effort`), color-coded: `low` gray · `medium` green · `high` amber · `xhigh`/`max` red
 - current git branch, with a `*` when the tree is dirty (staged, unstaged, or untracked) and `↑n↓n` ahead/behind the upstream
 - context window usage as a smooth 10-cell bar (⅛-block resolution) + percentage + `used/total` tokens (green / amber ≥60% / red ≥80%)
+- lines added/removed by the session (`+892 -305`), shown once either is non-zero
 - rate limit: 5-hour window usage %, plus the reset time (`↻17:10`) once it passes 60% and the 7-day window once it passes 50%
+- session duration (`3h5m`), shown once the session is a minute old
 - session cost in USD (gray, amber ≥ $5, red ≥ $20)
 
 Everything renders in a soft 256-color palette. Segments whose data isn't in the

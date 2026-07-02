@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code status line:
-#   model · effort · git branch[*][↑↓] · context bar + tokens · rate limit · cost
+#   model · effort · git branch[*][↑↓] · context bar + tokens · lines ±
+#   · rate limit · duration · cost
 # Reads session JSON from stdin (model, effort, context_window, rate_limits...).
 set -uo pipefail
 
@@ -20,6 +21,9 @@ input=$(cat)
   IFS= read -r rl5_pct
   IFS= read -r rl5_reset
   IFS= read -r rl7_pct
+  IFS= read -r lines_add
+  IFS= read -r lines_del
+  IFS= read -r dur_ms
 } < <(printf '%s' "$input" | jq -r '
   (.model.display_name // .model.id // "?"),
   (.model.id // ""),
@@ -35,12 +39,16 @@ input=$(cat)
   (.context_window.used_percentage // ""),
   (.rate_limits.five_hour.used_percentage // ""),
   (.rate_limits.five_hour.resets_at // ""),
-  (.rate_limits.seven_day.used_percentage // "")
+  (.rate_limits.seven_day.used_percentage // ""),
+  (.cost.total_lines_added // 0 | floor),
+  (.cost.total_lines_removed // 0 | floor),
+  (.cost.total_duration_ms // 0 | floor)
 ' 2>/dev/null)
 
 model=${model:-?}; model_id=${model_id:-}; cwd=${cwd:-.}; transcript=${transcript:-}
 cost=${cost:-0}; effort=${effort:-}; ctx_used=${ctx_used:-}; ctx_size=${ctx_size:-}
 used_pct=${used_pct:-}; rl5_pct=${rl5_pct:-}; rl5_reset=${rl5_reset:-}; rl7_pct=${rl7_pct:-}
+lines_add=${lines_add:-0}; lines_del=${lines_del:-0}; dur_ms=${dur_ms:-0}
 
 # --- git: branch, dirty marker, ahead/behind upstream -----------------------
 branch=""; dirty=""; arrows=""
@@ -181,6 +189,18 @@ if [ "${rl5_pct:-x}" -ge 0 ] 2>/dev/null; then
   fi
 fi
 
+# --- lines added/removed and session duration -------------------------------
+lines_seg=""
+if [ "${lines_add:-0}" -gt 0 ] 2>/dev/null || [ "${lines_del:-0}" -gt 0 ] 2>/dev/null; then
+  lines_seg="${GREEN}+${lines_add}${RESET} ${RED}-${lines_del}${RESET}"
+fi
+
+dur_seg=""
+dur_min=$(( dur_ms / 60000 )) 2>/dev/null || dur_min=0
+if   [ "$dur_min" -ge 60 ]; then dur_seg="$(( dur_min / 60 ))h$(( dur_min % 60 ))m"
+elif [ "$dur_min" -ge 1 ];  then dur_seg="${dur_min}m"
+fi
+
 # --- assemble ----------------------------------------------------------------
 sep="${DGRAY}·${RESET}"
 out="${BLUE}${model}${RESET}"
@@ -192,7 +212,9 @@ if [ -n "$branch" ]; then
 fi
 out+=" ${sep} ${bar_color}${bar} ${pct}%${RESET}"
 [ -n "$tok_label" ] && out+=" ${GRAY}${tok_label}${RESET}"
+[ -n "$lines_seg" ] && out+=" ${sep} ${lines_seg}"
 [ -n "$rate_seg" ] && out+=" ${sep} ${rate_seg}"
+[ -n "$dur_seg" ] && out+=" ${sep} ${GRAY}${dur_seg}${RESET}"
 out+=" ${sep} ${cost_color}\$${cost_fmt}${RESET}"
 
 printf '%s\n' "$out"
