@@ -72,10 +72,18 @@ The installer copies `statusline.sh` to `<target>/hooks/statusline.sh` and patch
 {
   "statusLine": {
     "type": "command",
-    "command": "bash \"<target>/hooks/statusline.sh\""
+    "command": "bash \"<target>/hooks/statusline.sh\"",
+    "refreshInterval": 2
   }
 }
 ```
+
+`refreshInterval` matters for the git segment: without it, Claude Code re-runs the
+status line only on conversation events (new assistant message, `/compact`,
+permission-mode change) — so a `git checkout` done in another terminal while the
+session sits idle stays stale until the next message. With it, the command also
+re-runs every N seconds, so branch/dirty/ahead-behind changes show up within ~2s.
+The script renders in ~20–40ms, so a 2s timer is negligible load.
 
 It preserves the rest of `settings.json` via `jq`.
 
@@ -87,7 +95,8 @@ If you'd rather wire it up by hand, copy `statusline.sh` anywhere on disk, make 
 {
   "statusLine": {
     "type": "command",
-    "command": "bash \"/absolute/path/to/statusline.sh\""
+    "command": "bash \"/absolute/path/to/statusline.sh\"",
+    "refreshInterval": 2
   }
 }
 ```

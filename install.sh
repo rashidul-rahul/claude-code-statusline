@@ -33,7 +33,7 @@ fi
 
 cmd="bash \"$target/hooks/statusline.sh\""
 tmp=$(mktemp)
-jq --arg cmd "$cmd" '.statusLine = {type: "command", command: $cmd}' "$settings" > "$tmp"
+jq --arg cmd "$cmd" '.statusLine = {type: "command", command: $cmd, refreshInterval: 2}' "$settings" > "$tmp"
 mv "$tmp" "$settings"
 echo "updated: $settings (statusLine -> $cmd)"
 
